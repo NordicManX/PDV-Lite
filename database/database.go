@@ -37,6 +37,7 @@ func SetupDatabase() *sql.DB {
         valor_total REAL NOT NULL,
         desconto REAL DEFAULT 0,
         data_venda TEXT NOT NULL,
+        status TEXT NOT NULL DEFAULT 'CONCLUIDA',
         FOREIGN KEY (usuario_id) REFERENCES usuarios (id)
     );
     CREATE TABLE IF NOT EXISTS venda_itens (

@@ -135,3 +135,70 @@ func GetSalesHandler(db *sql.DB) gin.HandlerFunc {
 		c.JSON(http.StatusOK, vendasDetalhadas)
 	}
 }
+
+func CancelSaleHandler(db *sql.DB) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		id := c.Param("id")
+
+		tx, err := db.Begin()
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Erro ao iniciar transação: " + err.Error()})
+			return
+		}
+
+		// 1. Verifica o status atual da venda
+		var statusAtual string
+		err = tx.QueryRow("SELECT status FROM vendas WHERE id = ?", id).Scan(&statusAtual)
+		if err != nil {
+			tx.Rollback()
+			c.JSON(http.StatusNotFound, gin.H{"error": "Venda não encontrada."})
+			return
+		}
+
+		if statusAtual == "CANCELADA" {
+			tx.Rollback()
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Esta venda já foi cancelada."})
+			return
+		}
+
+		// 2. Busca todos os itens da venda a ser cancelada
+		rowsItens, err := tx.Query("SELECT produto_id, quantidade FROM venda_itens WHERE venda_id = ?", id)
+		if err != nil {
+			tx.Rollback()
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Erro ao buscar itens da venda para cancelamento."})
+			return
+		}
+		defer rowsItens.Close()
+
+		// 3. Devolve os itens ao estoque
+		for rowsItens.Next() {
+			var item models.ItemVenda
+			if err := rowsItens.Scan(&item.ProdutoID, &item.Quantidade); err != nil {
+				tx.Rollback()
+				c.JSON(http.StatusInternalServerError, gin.H{"error": "Erro ao escanear item para cancelamento."})
+				return
+			}
+
+			_, err = tx.Exec("UPDATE produtos SET quantidade_estoque = quantidade_estoque + ? WHERE id = ?",
+				item.Quantidade, item.ProdutoID)
+			if err != nil {
+				tx.Rollback()
+				c.JSON(http.StatusInternalServerError, gin.H{"error": "Erro ao estornar estoque do produto ID " + fmt.Sprintf("%d", item.ProdutoID)})
+				return
+			}
+		}
+
+		// 4. Atualiza o status da venda para "CANCELADA"
+		_, err = tx.Exec("UPDATE vendas SET status = 'CANCELADA' WHERE id = ?", id)
+		if err != nil {
+			tx.Rollback()
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Erro ao atualizar status da venda."})
+			return
+		}
+
+		// 5. Se tudo deu certo, confirma a transação
+		tx.Commit()
+
+		c.JSON(http.StatusOK, gin.H{"message": "Venda cancelada e estoque estornado com sucesso!"})
+	}
+}
