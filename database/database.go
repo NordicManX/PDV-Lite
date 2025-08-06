@@ -1,19 +1,30 @@
+// pdv-lite/database/database.go
+
 package database
 
 import (
 	"database/sql"
 	"log"
+	"os"
 
 	_ "github.com/mattn/go-sqlite3"
 )
 
-func SetupDatabase() *sql.DB {
-	db, err := sql.Open("sqlite3", "./db.sqlite")
+// SetupDatabase inicializa e retorna uma conexão com o banco de dados.
+// Agora ela recebe o sourceName (ex: "./db.sqlite" ou ":memory:")
+func SetupDatabase(sourceName string) *sql.DB {
+	// Se o banco não for em memória, garantimos que o arquivo não pré-exista em modo de teste
+	// para manter os testes isolados. Esta parte é opcional mas uma boa prática.
+	if sourceName != ":memory:" {
+		os.Remove(sourceName) // Remove o banco de dados antigo se existir
+	}
+
+	db, err := sql.Open("sqlite3", sourceName)
 	if err != nil {
 		log.Fatalf("Erro ao conectar ao banco de dados: %v", err)
 	}
 
-	log.Println("Conectado ao banco de dados SQLite.")
+	log.Println("Conectado ao banco de dados SQLite em:", sourceName)
 
 	schema := `
     CREATE TABLE IF NOT EXISTS usuarios (
