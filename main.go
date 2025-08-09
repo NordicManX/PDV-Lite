@@ -34,6 +34,9 @@ func main() {
 	router.GET("/vendas", handlers.GetSalesHandler(db))
 	router.POST("/vendas/:id/cancelar", handlers.CancelSaleHandler(db))
 
+	//---ROTAS DE LOGIN---
+	router.POST("/login", handlers.LoginHandler())
+
 	log.Println("Servidor rodando em http://localhost:3000")
 	router.Run(":3000")
 }

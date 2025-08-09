@@ -31,3 +31,11 @@ type Produto struct {
 	PrecoVenda        float64 `json:"preco_venda"`
 	QuantidadeEstoque int     `json:"quantidade_estoque"`
 }
+
+type Usuario struct {
+	ID          int    `json:"id"`
+	NomeUsuario string `json:"nome_usuario"`
+	Email       string `json:"email"`
+	Senha       string `json:"-"`
+	CnpjCpf     string `json:"cnpj_cpf"`
+}
